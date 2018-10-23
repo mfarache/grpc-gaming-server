@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package tutorial;
+
+option java_multiple_files = true;
+option java_package = "com.example.gaming";
+
+message Game {
+    string name =1;
+}
+
+message User {
+    string username =1;
+    string email=2;
+    Game game=3;
+}
+
+message Score {
+    string username =1;
+    int32  points=2;
+    Game game=3;
+}
+
+message TopNHallOfFameRequest {
+    Game game=1;
+    int32 howMan=2;
+}
+
+message HallOfFame {
+    repeated Score users =1;
+}
+
+message GamingServerResponse {
+  enum StatusType {
+        OK = 0;
+        ERR = 1;
+  }
+  StatusType status =1;
+}
+
+service GamingServer {
+    rpc AddUser(User) returns (GamingServerResponse) {}
+
+    rpc AddScore(stream Score) returns (GamingServerResponse) {}
+
+    rpc GetUsers(Game) returns (stream User) {}
+
+    rpc GetHallOfFame(TopNHallOfFameRequest) returns (HallOfFame) {}
+}
+
