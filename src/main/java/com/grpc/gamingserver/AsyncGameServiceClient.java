@@ -1,8 +1,13 @@
 package com.grpc.gamingserver;
 
+import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+
+import javax.imageio.spi.ServiceRegistry;
 
 import com.example.gaming.Game;
 import com.example.gaming.GamingServerGrpc;
@@ -23,16 +28,17 @@ public class AsyncGameServiceClient {
 
 	public static void main(String[] args) throws InterruptedException, ExecutionException {
 
-		Channel channel = ManagedChannelBuilder.forAddress(GameServerSettings.HOST, GameServerSettings.PORT).usePlaintext().maxInboundMessageSize(16*1024*1024).build();
-		Game game = MessageBuilder.aGame();
+		Channel channel = ManagedChannelBuilder.forAddress(GameServerSettings.HOST, GameServerSettings.PORT)
+				.usePlaintext().maxInboundMessageSize(16 * 1024 * 1024).build();
+		Game game = MessageBuilder.aGame(GameServerSettings.validGameNames.get(0));
 		User user = MessageBuilder.aUser(args[0], args[1], game);
-		
+
 		async = asyncClient(channel);
 
 		async.addUser(user, new StreamObserver<GamingServerResponse>() {
 			@Override
 			public void onCompleted() {
-				LOG.info("Call to addUser was completed");
+
 			}
 
 			@Override
@@ -43,31 +49,36 @@ public class AsyncGameServiceClient {
 			@Override
 			public void onNext(GamingServerResponse arg0) {
 				LOG.info("addUser - Status:" + arg0.getStatus());
-				
+
 			}
 		});
 
 		Thread.sleep(1000);
 		getUsers(game);
-		
+
 		Thread.sleep(1000);
 		hallOfFame(GameServerSettings.HALL_OF_FAME_RANK, game);
 
-		Thread.sleep(1000);
-		LOG.info("**** Add Score 1");
-		addScore(user.getUsername(), 1000, game);
+		int N = new Random().nextInt(5);
+		int[] values = { N * 1000, N * 2000, N * 3000, N * 4000 };
+		IntStream.of(values).forEach(score -> {
+			try {
+				Thread.sleep(1000);
+				LOG.info("**** Adding score: " + score);
+				addScore(user.getUsername(), score, game);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		});
 
-		Thread.sleep(100000);		
+		Thread.sleep(100000);
 
 	}
-	
+
 	private static void addScore(String user, int points, Game game) {
-		LOG.info("-- addScore");
 		StreamObserver<Score> scoreObserver = async.addScore(new StreamObserver<GamingServerResponse>() {
 			@Override
-			public void onCompleted() {
-				LOG.info(game.getName() + ": Call to addScore was completed user:" + user );
-			}
+			public void onCompleted() {};
 
 			@Override
 			public void onError(Throwable arg0) {
@@ -81,14 +92,11 @@ public class AsyncGameServiceClient {
 		});
 		scoreObserver.onNext(MessageBuilder.aScore(points, user, game));
 	}
-	
+
 	private static void hallOfFame(int n, Game game) {
-		LOG.info("-- hallOfFame");
 		async.getHallOfFame(MessageBuilder.aTopRequest(game, n), new StreamObserver<HallOfFame>() {
 			@Override
-			public void onCompleted() {
-				LOG.info(game.getName() + ": Call to getHallOfFame was completed");
-			}
+			public void onCompleted() {};
 
 			@Override
 			public void onError(Throwable arg0) {
@@ -97,20 +105,20 @@ public class AsyncGameServiceClient {
 
 			@Override
 			public void onNext(HallOfFame hallOfFame) {
-				hallOfFame.getUsersList().stream().forEach(u->{
-					LOG.info("Hall of fame: Score:" + u.getUsername() + " score:" + u.getPoints());
+				LOG.info("******************* Hall of fame Rank **********************");
+				int[] index = { 1 };
+				hallOfFame.getUsersList().forEach(u -> {
+					LOG.info("******* " + (index[0]++) + " : " + u.getUsername() + " SCORE:" + u.getPoints());
 				});
+				LOG.info("******************* Hall of fame Rank **********************");
 			}
 		});
 	}
-	
+
 	private static void getUsers(Game game) {
-		LOG.info("-- getUsers");
 		async.getUsers(game, new StreamObserver<User>() {
 			@Override
-			public void onCompleted() {
-				LOG.info(game.getName() + ": Call to getUsers was completed");
-			}
+			public void onCompleted() {};
 
 			@Override
 			public void onError(Throwable arg0) {

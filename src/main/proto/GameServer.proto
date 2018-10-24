@@ -45,6 +45,6 @@ service GamingServer {
 
     rpc GetUsers(Game) returns (stream User) {}
 
-    rpc GetHallOfFame(TopNHallOfFameRequest) returns (HallOfFame) {}
+    rpc GetHallOfFame(TopNHallOfFameRequest) returns (stream HallOfFame) {}
 }
 
